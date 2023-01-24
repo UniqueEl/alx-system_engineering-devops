@@ -7,6 +7,8 @@ global
 	user haproxy
 	group haproxy
 	daemon
+	maxconn 2048
+	tune.ssl.default-dh-param 2048
 
 	# Default SSL material locations
 	ca-base /etc/ssl/certs
@@ -22,6 +24,8 @@ defaults
 	mode	http
 	option	httplog
 	option	dontlognull
+	option forwardfor
+	option http-server-close
         timeout connect 5000
         timeout client  50000
         timeout server  50000
@@ -32,22 +36,29 @@ defaults
 	errorfile 502 /etc/haproxy/errors/502.http
 	errorfile 503 /etc/haproxy/errors/503.http
 	errorfile 504 /etc/haproxy/errors/504.http
+listen http-in
+	bind :80
+	balance roundrobin
+	server 87235-web-01 54.86.220.207:80 check
+	server 87235-web-02 54.175.137.217:80 check
 
-# start of parameters for uniqueel.tech
 frontend uniqueel.tech-http-frontend
-	bind	 *:80
-	http-request set-header X-Forwarded-Proto http
-	default_backend	 uniqueel.tech-backend
+	bind *:80
+	reqadd X-Forwarded-Proto:\ http
+	default_backend uniqueel.tech-backend
 
-
-frontend  uniqueel.tech-https-frontend
-	bind *:443 ssl crt /etc/ssl/uniqueel.tech.pem
-	http-request set-header X-Forwarded-Proto https
-        default_backend uniqueel.tech-backend
-
+frontend uniqueel.tech-https-frontend
+	bind *:443 ssl crt /etc/haproxy/certs/uniqueel.tech.pem
+	reqadd X-Forwarded-Proto:\ https
+	acl letsencrypt-acl path_beg /.well-known/acme-challenge/
+	use_backend letsencrypt-backend if letsencrypt-acl
+	default_backend uniqueel.tech-backend
 
 backend uniqueel.tech-backend
-        balance roundrobin
-        server 87235-web-01 54.86.220.207:80 check
-        server 87235-web-02 54.175.137.217:80 check
-# end of parameters
+	balance roundrobin
+	server 87235-web-01 54.86.220.207:80 check
+	server 87235-web-02 54.175.137.217:80 check
+
+backend letsencrypt-backend
+	server letsencrypt 127.0.0.1:54321
+	
