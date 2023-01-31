@@ -33,21 +33,12 @@ defaults
 	errorfile 503 /etc/haproxy/errors/503.http
 	errorfile 504 /etc/haproxy/errors/504.http
 
-# start of parameters for uniqueel.tech
-frontend uniqueel.tech-http-frontend
-	bind	 *:80
-	http-request set-header X-Forwarded-Proto http
-	default_backend	 uniqueel.tech-backend
+frontend myfrontend
+	bind *:80
+	bind *:443 ssl crt /etc/haproxy/certs/www.uniqueel.tech.pem
+	default_backend myservers
 
-
-frontend  uniqueel.tech-https-frontend
-	bind *:443 ssl crt /etc/ssl/uniqueel.tech.pem
-	http-request set-header X-Forwarded-Proto https
-        default_backend uniqueel.tech-backend
-
-
-backend uniqueel.tech-backend
-        balance roundrobin
-        server 87235-web-01 54.86.220.207:80 check
-        server 87235-web-02 54.175.137.217:80 check
-# end of parameters
+backend myservers
+	balance roundrobin
+	server web-01 54.86.220.207:80 check
+	server web-02 54.175.137.217:80 check	
